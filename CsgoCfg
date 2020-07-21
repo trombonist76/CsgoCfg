@@ -1,0 +1,172 @@
+import os 
+import getpass
+from pathlib import Path
+
+
+
+class Csgocfg:
+
+    def __init__(self):
+
+        self.cfgPath = "henüz tanımlanmadı"
+        self.cfg730 = "henüz tanımlanmadı"
+        self.deskPath = "henüz tanımlanmadı"
+        self.deskCfg = "henüz tanımlanmadı"
+        
+
+    """Bu metodun amacı Csgo'nun içindeki cfg klasörüne ulaşmak burada os.walk() kullanarak bu dosyayı bulabilirdim
+    fakat fazla zaman alıyordu. Ben de bu şekilde yaptım"""
+    def findCfgPath(self):
+
+        for i in (os.listdir("C:\\")): #Local diskleri elle yazmak istemezdim ama local disklere ulaşabileceğim bir fonksiyon bulamadım. 
+            isCfgPath = os.sep.join(["C:",i,"Steam\\steamapps\\common\\Counter-Strike Global Offensive\\csgo\\cfg"])  
+
+            # Yukarıda C'nin içindeki klasörleri tek tek deneyip cfg'ye ulaşıyorum fakat eğer Steam C'nin içindeki klasörlerin içindeki bir dizindeyse hata alırım bunun farkındayım.
+
+            if os.path.exists(isCfgPath) == True: # Burada tek tek deniyoruz böyle bi dizin var mı? sorgusu yapılıyor. Varsa tahmin ettiğiniz gibi True döndürüyor.
+                self.cfgPath = isCfgPath
+                
+
+        try:
+
+          #Burada Steamin farklı D' diskine kurulu olma ihtimaline karşı yukarıdaki işlemi burada yaptım. 
+
+            for i in (os.listdir("D:\\")): 
+                isCfgPath = os.sep.join(["D:",i,"Steam\\steamapps\\common\\Counter-Strike Global Offensive\\csgo\\cfg"])
+                
+                if os.path.exists(isCfgPath) == True:
+                    self.cfgPath = isCfgPath
+
+                    
+
+        except Exception: pass
+        
+
+
+    def findCfg730(self): 
+
+        #Bu metodun amacı Cs-Go'daki en son kullandığımız ayarların saklı olduğu 730 klasörünün içindeki config.cfg dosyasını bulmak.
+
+        self.findCfgPath() # Bunu yapmak için bu metodu çağırmam gerek çünkü constructor'ın içinde self.cfgPath = 'Henüz tanımlanmamış' olarak tanımlı.
+
+        self.cfg730 = self.cfgPath.split("\\steamapps")[0]
+        self.cfg730 = os.sep.join([self.cfg730,"userdata\\443151005\\730\\local\\cfg\\config.cfg"])
+        
+        
+
+    def findDeskPath(self):
+
+        #Bu metodun amacı Masaüstü yolunu bulmak  
+
+        home = str(Path.home()) 
+
+        #Bu fonksiyon bize 'C:\Users\Kullanıcı' sonucunu veriyor.Fakat Masaüstü bazen Kullanıcı Klasörünün içinde olmuyor Mesela bende 'Onedrive'ın klasöründe
+        #Bundan dolayı try except kullandım.
+
+        try:
+            try:
+                self.deskPath = (os.sep.join([home,"Masaüstü"])) #Bu fonksiyon home objesinden aldığımız sonuca verilen parametreyi ekliyor.
+                if os.path.exists(self.deskPath) == False: #Eğer böyle bir dizin yoksa false dündürüp diğer bloklara geçişi sağladım
+                    raise Exception
+            except Exception:
+                self.deskPath = (os.sep.join([home,"Desktop"]))
+                if os.path.exists(self.deskPath) == False:
+                    raise Exception
+        except:
+            try:
+                self.deskPath = (os.sep.join([home,"Onedrive\\Desktop"]))
+                if os.path.exists(self.deskPath) == False:
+                    raise Exception
+
+            except Exception: 
+                self.deskPath = (os.sep.join([home,"Onedrive\\Masaüstü"]))
+                if os.path.exists(self.deskPath) == False:
+                    raise Exception
+        
+
+
+
+    def copyCfg(self,newcfgname): 
+
+
+        #Bu metodun amacı kullanıcıdan dosya adı alarak 730 klasöründeki config dosyasının kopyasını
+        # oyunu içinde exec komutuyla config dosyalarını çalıştırabildiğimiz cfg klasörüne atıyor.
+        # Bunu neden yapıyorum. Ben oyun içinde çok sık ayar değiştiren birisiyim oyundan çıkıp tekrar girdiğimde ayarlarım kaybolmuyor
+        # fakat oyundan çıkıp tekrar girdiğimde alias(özel komutlar,örn;jumpthrow) kodları çalışmıyor. Çünkü 730(Yani son ayarlarımızın kayıtlı olduğu config)
+        # bu alias kodlarını saklayamıyor. Ben de bu yüzden böyle bir proje oluşturdum. Son kullandığım ayarları istediğim zaman oyun içinde kullanmak için 730'daki cfgyi kopyalayıp
+        # özel kodları ve bind komutlarını da aşağıdaki bir metodla bu yeni config dosyasına ekleyerek /csgo/cfg klasörüne atacak.
+
+
+        self.findCfg730()
+        self.findCfgPath()
+
+        self.newConfigFile = (f"{self.cfgPath}\\{newcfgname}.cfg")
+        with open(self.cfg730,"r",encoding="utf-8") as seventhirty:
+            with open(self.newConfigFile,"w",encoding="utf-8") as f:
+                for satir in seventhirty:
+                    f.write(satir)
+
+
+  
+    def copyDesktop(self,newcfgname): #Bu metod yukarıdaki metodun son kullanılan ayarları Masaüstüne atan modeli 
+        
+        self.findCfg730()
+        self.findDeskPath()
+  
+        self.deskCfg = (f"{self.deskPath}\\{newcfgname}.cfg")
+
+        with open(self.deskCfg,"w",encoding="utf-8") as deskCfg:
+            with open(self.cfg730,"r",encoding="utf-8") as seventhirty:
+                for satir in seventhirty:
+                    deskCfg.write(satir)
+
+
+    def binds(self,**kwargs): 
+        
+    #Burada 730 klasöründe tutulmayan özel kodları ve bind komutlarını yeni oluşturduğumuz config dosyasına ekliyor **kwargs almamın sebebi kullanıcıdan
+    # hangi kodu eklemek istediği ve kodu atayacağı tuş olarak parametre almış olmam. Çalıştırılırken CsgoCfg.binds(f=jumpthrow)
+
+        for bindkey, bindscript in kwargs.items():
+
+            if os.path.exists(self.deskCfg):  #Burada dosyanın masaüstüne mi yoksa cfgye mi atıldığını kontrol ediyorum. Bu masaütüne atıldıysa
+                
+                if bindscript == "jumpthrow":
+                    script = (f'alias "+jumpthrow" "+jump;-attack"; alias "-jumpthrow" "-jump"; bind {bindkey} "+jumpthrow"\n')
+
+                    with open(self.deskCfg,"a",encoding="utf-8") as f:
+                        f.write(script)
+
+                elif bindscript == "akm4":
+                    script = (f'bind "{bindkey}" "buy ak47; buy m4a1;"\n')
+
+                    with open(self.deskCfg,"a",encoding="utf-8") as f:
+                        f.write(script)
+                
+
+                elif bindscript == "scroll":
+                    script = (f'bind "{bindkey}" "+jump"\n')
+                    with open(self.deskCfg,"a",encoding="utf-8") as f:
+                        f.write(script)
+            
+            else:                                                   #Bu da cfgye atıldıysa
+
+                if bindscript == "jumpthrow":
+                    script = (f'alias "+jumpthrow" "+jump;-attack"; alias "-jumpthrow" "-jump"; bind {bindkey} "+jumpthrow"\n')
+
+                    with open(self.deskCfg,"a",encoding="utf-8") as f:
+                        f.write(script)
+
+                elif bindscript == "akm4":
+                    script = (f'bind "{bindkey}" "buy ak47; buy m4a1;"\n')
+
+                    with open(self.deskCfg,"a",encoding="utf-8") as f:
+                        f.write(script)
+                
+
+                elif bindscript == "scroll":
+                    script = (f'bind "{bindkey}" "+jump"\n')
+
+                    with open(self.deskCfg,"a",encoding="utf-8") as f:
+                        f.write(script)
+            
+
